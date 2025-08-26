@@ -81,6 +81,34 @@ def load_data_to_bq(
     assert isinstance(data, pd.DataFrame)
     full_table_name = f"{gcp_project}.{bq_dataset}.{table}"
     print(Fore.BLUE + f"\nSave data to BigQuery @ {full_table_name}...:" + Style.RESET_ALL)
+    
+    data_copy = data.copy()
+    
+    new_columns = []
+    for col in data_copy.columns:
+        col_str = str(col)  # Ensure it's a string
+        
+        # If column doesn't start with letter or underscore, prefix with underscore
+        if not (col_str[0].isalpha() or col_str[0] == '_'):
+            col_str = f"_{col_str}"
+        
+        # Replace any invalid characters with underscores
+        col_str = ''.join(c if c.isalnum() or c == '_' else '_' for c in col_str)
+        new_columns.append(col_str)
+    
+    data.columns = new_columns
+    
+    client = bigquery.Client()
+    if truncate == True:
+        write_mode = "WRITE_TRUNCATE"
+    else:
+        write_mode = "WRITE_APPEND"
+        
+    job_config = bigquery.LoadJobConfig(write_disposition=write_mode)
+    print(data.columns)
+
+    job = client.load_table_from_dataframe(data, full_table_name, job_config=job_config)
+    result = job.result()
 
     # Load data onto full_table_name
 
